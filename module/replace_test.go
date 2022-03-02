@@ -26,13 +26,15 @@ func TestRetag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	module.Retag(n, map[string]map[string]*structtag.Tags{
-		"Simple": {
-			"Single":   tagMust(structtag.Parse(`sql:"-,omitempty"`)),
-			"Multiple": tagMust(structtag.Parse(`xml:"-,omitempty"`)),
-			"None":     tagMust(structtag.Parse(`json:"none,omitempty"`)),
-		},
-	})
+	ft := module.NewFieldTags()
+	ft.Set("Single", tagMust(structtag.Parse(`sql:"-,omitempty"`)))
+	ft.Set("Multiple", tagMust(structtag.Parse(`xml:"-,omitempty"`)))
+	ft.Set("None", tagMust(structtag.Parse(`json:"none,omitempty"`)))
+
+	st := module.NewStructTags()
+	st.Set("Simple", ft)
+
+	module.Retag(n, st)
 
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, fs, n); err != nil {

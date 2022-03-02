@@ -8,29 +8,9 @@ import (
 	"github.com/fatih/structtag"
 )
 
-type StructTags map[string]map[string]*structtag.Tags
-
-func (s StructTags) AddTagsToXXXFields(tags *structtag.Tags) {
-	xtags := map[string]*structtag.Tags{
-		"XXX_NoUnkeyedLiteral": tags,
-		"XXX_unrecognized":     tags,
-		"XXX_sizecache":        tags,
-	}
-
-	for o := range s {
-		if s[o] == nil {
-			s[o] = map[string]*structtag.Tags{}
-		}
-
-		for k, v := range xtags {
-			s[o][k] = v
-		}
-	}
-}
-
 // Retag updates the existing tags with the map passed and modifies existing tags if any of the keys are matched.
 // First key to the tags argument is the name of the struct, the second key corresponds to field names.
-func Retag(n ast.Node, tags StructTags) error {
+func Retag(n ast.Node, tags *StructTags) error {
 	r := retag{}
 	f := func(n ast.Node) ast.Visitor {
 		if r.err != nil {
@@ -38,8 +18,9 @@ func Retag(n ast.Node, tags StructTags) error {
 		}
 
 		if tp, ok := n.(*ast.TypeSpec); ok {
-			r.tags = tags[tp.Name.String()]
-			return r
+			if r.tags, ok = tags.Get(tp.Name.String()); ok {
+				return r
+			}
 		}
 
 		return nil
@@ -56,7 +37,7 @@ type structVisitor struct {
 
 func (v structVisitor) Visit(n ast.Node) ast.Visitor {
 	if tp, ok := n.(*ast.TypeSpec); ok {
-		if _, ok := tp.Type.(*ast.StructType); ok {
+		if _, ok = tp.Type.(*ast.StructType); ok {
 			ast.Walk(v.visitor(n), n)
 			return nil // This will ensure this struct is no longer traversed
 		}
@@ -66,7 +47,7 @@ func (v structVisitor) Visit(n ast.Node) ast.Visitor {
 
 type retag struct {
 	err  error
-	tags map[string]*structtag.Tags
+	tags *FieldTags
 }
 
 func (v retag) Visit(n ast.Node) ast.Visitor {
@@ -78,8 +59,9 @@ func (v retag) Visit(n ast.Node) ast.Visitor {
 		if len(f.Names) == 0 {
 			return nil
 		}
-		newTags := v.tags[f.Names[0].String()]
-		if newTags == nil {
+		var newTags *structtag.Tags
+		newTags, ok = v.tags.Get(f.Names[0].String())
+		if !ok || newTags == nil {
 			return nil
 		}
 

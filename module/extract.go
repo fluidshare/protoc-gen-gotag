@@ -15,7 +15,7 @@ type tagExtractor struct {
 	pgs.DebuggerCommon
 	pgsgo.Context
 
-	tags        map[string]map[string]*structtag.Tags
+	tags        *StructTags
 	autoAddTags map[string]func(name pgs.Name) pgs.Name
 }
 
@@ -57,9 +57,7 @@ func (v *tagExtractor) VisitOneOf(o pgs.OneOf) (pgs.Visitor, error) {
 
 	msgName := v.Context.Name(o.Message()).String()
 
-	if v.tags[msgName] == nil {
-		v.tags[msgName] = map[string]*structtag.Tags{}
-	}
+	ft := v.tags.GetOrCreate(msgName)
 
 	if !ok {
 		return v, nil
@@ -70,7 +68,7 @@ func (v *tagExtractor) VisitOneOf(o pgs.OneOf) (pgs.Visitor, error) {
 		return nil, err
 	}
 
-	v.tags[msgName][v.Context.Name(o).String()] = tags
+	ft.Set(v.Context.Name(o).String(), tags)
 
 	return v, nil
 }
@@ -86,10 +84,7 @@ func (v *tagExtractor) VisitField(f pgs.Field) (pgs.Visitor, error) {
 	if f.InOneOf() && !f.Descriptor().GetProto3Optional() {
 		msgName = f.Message().Name().UpperCamelCase().String() + "_" + f.Name().UpperCamelCase().String()
 	}
-
-	if v.tags[msgName] == nil {
-		v.tags[msgName] = map[string]*structtag.Tags{}
-	}
+	ft := v.tags.GetOrCreate(msgName)
 
 	tags := structtag.Tags{}
 	if len(v.autoAddTags) > 0 {
@@ -106,7 +101,7 @@ func (v *tagExtractor) VisitField(f pgs.Field) (pgs.Visitor, error) {
 	}
 
 	if !ok {
-		v.tags[msgName][v.Context.Name(f).String()] = &tags
+		ft.Set(v.Context.Name(f).String(), &tags)
 		return v, nil
 	}
 
@@ -118,13 +113,13 @@ func (v *tagExtractor) VisitField(f pgs.Field) (pgs.Visitor, error) {
 		}
 	}
 
-	v.tags[msgName][v.Context.Name(f).String()] = &tags
+	ft.Set(v.Context.Name(f).String(), &tags)
 
 	return v, nil
 }
 
-func (v *tagExtractor) Extract(f pgs.File) StructTags {
-	v.tags = map[string]map[string]*structtag.Tags{}
+func (v *tagExtractor) Extract(f pgs.File) *StructTags {
+	v.tags = NewStructTags()
 
 	v.CheckErr(pgs.Walk(v, f))
 
