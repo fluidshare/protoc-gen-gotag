@@ -11,6 +11,9 @@ import (
 // Retag updates the existing tags with the map passed and modifies existing tags if any of the keys are matched.
 // First key to the tags argument is the name of the struct, the second key corresponds to field names.
 func Retag(n ast.Node, tags *StructTags) error {
+	if n == nil {
+		return nil
+	}
 	r := retag{}
 	f := func(n ast.Node) ast.Visitor {
 		if r.err != nil {

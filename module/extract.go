@@ -1,13 +1,12 @@
 package module
 
 import (
+	"github.com/srikrsna/protoc-gen-gotag/tagger"
 	"strings"
 
 	"github.com/fatih/structtag"
 	pgs "github.com/lyft/protoc-gen-star"
 	pgsgo "github.com/lyft/protoc-gen-star/lang/go"
-
-	"github.com/srikrsna/protoc-gen-gotag/tagger"
 )
 
 type tagExtractor struct {
